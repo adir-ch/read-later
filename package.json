@@ -4,10 +4,13 @@
   "description": "Local-first macOS tray app for saving and summarising URLs",
   "main": "out/main/index.js",
   "scripts": {
+    "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "dev": "electron-vite dev",
     "build": "electron-vite build && electron-builder --mac",
     "typecheck": "tsc --noEmit -p tsconfig.main.json && tsc --noEmit -p tsconfig.renderer.json",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "import-pocket": "node scripts/import-pocket.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -25,6 +28,8 @@
     "electron": "^33.3.1",
     "electron-builder": "^25.1.8",
     "electron-vite": "^2.3.0",
+    "hjson": "^3.2.2",
+    "jsonrepair": "^3.13.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "typescript": "^5.7.2",
