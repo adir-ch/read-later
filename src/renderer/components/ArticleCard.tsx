@@ -59,19 +59,22 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({ layout, art
         position: 'relative',
         transition: 'box-shadow var(--transition)',
         overflow: 'hidden',
+        minWidth: 0,
+        minHeight: showCover ? undefined : '168px',
       }
     : {
-        padding: '14px',
+        padding: '14px 16px',
         borderBottom: '1px solid var(--border)',
         animation: 'slideIn 200ms ease',
         position: 'relative',
+        minHeight: '128px',
       }
 
   const faviconSize = isDesktop ? 18 : 16
   const globeSize = isDesktop ? 15 : 13
-  const titleSize = isDesktop ? '14px' : '13px'
-  const titleLineHeight = isDesktop ? 1.45 : 1.4
-  const linkIconSize = isDesktop ? 12 : 11
+  const titleSize = isDesktop ? '15px' : '13px'
+  const titleLineHeight = isDesktop ? 1.5 : 1.4
+  const linkIconSize = isDesktop ? 13 : 11
 
   const innerPadding = showCover ? { padding: '12px 16px 16px' } : undefined
 
@@ -193,14 +196,14 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({ layout, art
         <p
           onClick={() => setExpanded(!expanded)}
           style={{
-            fontSize: '12px',
+            fontSize: isDesktop ? '13px' : '12px',
             color: 'var(--text-muted)',
-            lineHeight: 1.6,
+            lineHeight: 1.65,
             marginBottom: '10px',
             cursor: 'pointer',
             overflow: expanded ? 'visible' : 'hidden',
             display: expanded ? 'block' : '-webkit-box',
-            WebkitLineClamp: expanded ? 'unset' : 2,
+            WebkitLineClamp: expanded ? 'unset' : isDesktop ? 3 : 2,
             WebkitBoxOrient: 'vertical',
           } as React.CSSProperties}
           title={expanded ? 'Click to collapse' : 'Click to expand'}
@@ -232,7 +235,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({ layout, art
           onError={() => setCoverError(true)}
           style={{
             width: '100%',
-            height: '140px',
+            height: 'clamp(152px, min(24vh, 26vw), 228px)',
+            minHeight: '152px',
             objectFit: 'cover',
             display: 'block',
           }}

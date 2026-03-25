@@ -1,7 +1,11 @@
-import React from 'react'
+import React, { useRef, useState, useLayoutEffect } from 'react'
 import type { Article, WindowMode } from '../../shared/types'
 import { ArticleCard } from './ArticleCard'
 import { BookOpen } from 'lucide-react'
+
+/** Minimum column width (px) for desktop grid — scales columns with window; cards stay readable */
+const DESKTOP_CARD_MIN_PX = 300
+const DESKTOP_GRID_GAP_PX = 16
 
 interface ArticleListProps {
   windowMode: WindowMode
@@ -45,7 +49,7 @@ function SkeletonGridCard() {
     borderRadius: 'var(--radius-sm)',
   }
 
-  return (
+    return (
     <div
       style={{
         padding: '16px',
@@ -53,7 +57,8 @@ function SkeletonGridCard() {
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius-md)',
         boxShadow: 'var(--shadow-sm)',
-        minHeight: '140px',
+        minHeight: '168px',
+        minWidth: 0,
       }}
     >
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '12px' }}>
@@ -80,35 +85,52 @@ export const ArticleList: React.FC<ArticleListProps> = ({
   onTagRemove,
 }) => {
   const layout = windowMode === 'desktop' ? 'desktop' : 'tray'
+  const desktopScrollRef = useRef<HTMLDivElement>(null)
+  const [desktopCols, setDesktopCols] = useState(2)
+
+  useLayoutEffect(() => {
+    if (layout !== 'desktop') return
+    const el = desktopScrollRef.current
+    if (!el) return
+    const measure = () => {
+      const w = el.clientWidth
+      const c = Math.max(1, Math.floor((w + DESKTOP_GRID_GAP_PX) / (DESKTOP_CARD_MIN_PX + DESKTOP_GRID_GAP_PX)))
+      setDesktopCols(c)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [layout])
+
+  const skeletonDesktopCount = Math.min(12, Math.max(4, desktopCols * 3))
 
   if (loading) {
     if (layout === 'desktop') {
       return (
         <div
+          ref={desktopScrollRef}
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '0 16px 16px',
+            padding: `0 16px ${DESKTOP_GRID_GAP_PX}px`,
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-            gap: '14px',
+            gridTemplateColumns: `repeat(auto-fill, minmax(${DESKTOP_CARD_MIN_PX}px, 1fr))`,
+            gap: `${DESKTOP_GRID_GAP_PX}px`,
             alignContent: 'start',
           }}
         >
-          <SkeletonGridCard />
-          <SkeletonGridCard />
-          <SkeletonGridCard />
-          <SkeletonGridCard />
-          <SkeletonGridCard />
-          <SkeletonGridCard />
+          {Array.from({ length: skeletonDesktopCount }, (_, i) => (
+            <SkeletonGridCard key={i} />
+          ))}
         </div>
       )
     }
     return (
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        <SkeletonRow />
-        <SkeletonRow />
-        <SkeletonRow />
+        {Array.from({ length: 8 }, (_, i) => (
+          <SkeletonRow key={i} />
+        ))}
       </div>
     )
   }
@@ -139,13 +161,14 @@ export const ArticleList: React.FC<ArticleListProps> = ({
   if (layout === 'desktop') {
     return (
       <div
+        ref={desktopScrollRef}
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '0 16px 16px',
+          padding: `0 16px ${DESKTOP_GRID_GAP_PX}px`,
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-          gap: '14px',
+          gridTemplateColumns: `repeat(auto-fill, minmax(${DESKTOP_CARD_MIN_PX}px, 1fr))`,
+          gap: `${DESKTOP_GRID_GAP_PX}px`,
           alignContent: 'start',
         }}
       >

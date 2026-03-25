@@ -1,6 +1,6 @@
 # ReadLater
 
-Local-first **macOS** menu bar app for saving URLs and generating short summaries with **Anthropic Claude**. Data stays on your machine in SQLite; nothing is synced to a cloud service by the app itself.
+Local-first desktop app (Electron) for saving URLs and generating short summaries with **Anthropic Claude**. The UX targets **macOS** (menu bar tray); you can also run it on **Windows** and **Linux** from source. Data stays on your machine in SQLite; nothing is synced to a cloud service by the app itself.
 
 ## Features
 
@@ -16,18 +16,105 @@ Local-first **macOS** menu bar app for saving URLs and generating short summarie
 
 ## Requirements
 
-- **macOS** (the build is configured for Mac only; tray and window behavior target macOS).
-- **Node.js** (LTS recommended) and **npm**.
-- An **[Anthropic API key](https://console.anthropic.com/)** if you want AI-generated summaries (optional; titles and error messages still update without it).
+- **Node.js** (LTS recommended) and **npm** (for development and building from source).
+- **Electron** runs on **macOS, Windows, and Linux**. The UI is tuned for **macOS** (menu bar tray, dock behavior); on other OSes the same features run with the standard Electron window/tray behavior for that platform.
+- Packaged installers: this repo’s **`npm run build`** currently produces a **macOS DMG** only (see [Building](#building)). Windows and Linux packages require adding `electron-builder` targets (for example `nsis` or `portable` on Windows, `AppImage` or `deb` on Linux).
 
-## Anthropic API key
+---
 
-Summaries use the Claude API (`claude-sonnet-4-20250514` in code). Configure the key in either way:
+## Running ReadLater
 
-1. **Environment variable** — Set `ANTHROPIC_API_KEY` before starting the app (useful in development).
-2. **Encrypted storage** — The main process can persist the key with Electron `safeStorage` under the app user data directory (see IPC `save-api-key` in the codebase). If you add a settings UI later, it would call the same bridge as `window.api.saveApiKey`.
+### Option A — Development (macOS, Windows, Linux)
 
-On launch, a key file in user data is decrypted into `process.env.ANTHROPIC_API_KEY` when encryption is available.
+From the project root:
+
+```bash
+npm install
+npm run dev
+```
+
+This starts the app via **electron-vite** with hot reload. On first install, **`postinstall`** rebuilds **better-sqlite3** for Electron; if that fails, see [Native modules](#native-modules-better-sqlite3) below.
+
+### Option B — Packaged app (macOS)
+
+After [building](#building), open the **`.dmg`** from `dist/`, drag **ReadLater** into **Applications**, and launch it like any other app.
+
+### Option C — Run the built app without a DMG (any OS)
+
+After `npm run build` (or `electron-vite build`), you can run the output app bundle from `dist/` if your platform produced one. For day-to-day use on Windows/Linux, use **Option A** until you add installer targets.
+
+---
+
+## Where the database and API key file live
+
+The app stores SQLite as **`readlater.db`** under Electron’s **`userData`** directory (same folder as the optional encrypted API key file **`.apikey`**).
+
+The folder name comes from **`name`** in `package.json` (`readlater`), not the display name **ReadLater**.
+
+| OS | Typical `userData` path | Database file |
+|----|-------------------------|----------------|
+| **macOS** | `~/Library/Application Support/readlater/` | `readlater.db` |
+| **Windows** | `%APPDATA%\readlater\` (usually `C:\Users\<you>\AppData\Roaming\readlater\`) | `readlater.db` |
+| **Linux** | `$XDG_CONFIG_HOME/readlater/` or `~/.config/readlater/` | `readlater.db` |
+
+SQLite may also create **`readlater.db-wal`** and **`readlater.db-shm`** next to the database (WAL mode). Back up **`readlater.db`** (and WAL/SHM if present while the app is closed) to keep your library.
+
+The **Pocket import** script defaults to macOS paths; on Windows/Linux set **`READLATER_DB`** explicitly, for example:
+
+```bash
+# Linux
+READLATER_DB="$HOME/.config/readlater/readlater.db" node scripts/import-pocket.mjs --clean export.json
+```
+
+```powershell
+# Windows (PowerShell)
+$env:READLATER_DB="$env:APPDATA\readlater\readlater.db"; node scripts/import-pocket.mjs --clean export.json
+```
+
+---
+
+## Configuring the LLM API key (article summaries)
+
+Summaries use the **Anthropic** API (**Claude**; model id `claude-sonnet-4-20250514` in [`src/main/summariser.ts`](src/main/summariser.ts)). Without a key, titles still load from the page but summaries show a “API key not configured” style message.
+
+### 1. Environment variable `ANTHROPIC_API_KEY` (works everywhere)
+
+Set the variable **before** starting ReadLater (development or packaged if your launcher passes env vars).
+
+**macOS / Linux (bash/zsh):**
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-api03-..."
+npm run dev
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$env:ANTHROPIC_API_KEY="sk-ant-api03-..."
+npm run dev
+```
+
+**Windows (Command Prompt):**
+
+```cmd
+set ANTHROPIC_API_KEY=sk-ant-api03-...
+npm run dev
+```
+
+To persist for GUI apps on macOS, you can use a `launchd` plist, **Automator**, or a small wrapper script that exports the variable then opens the `.app`. On Windows, set a user environment variable under **System Properties → Environment Variables**, or use a shortcut that sets it before launch.
+
+### 2. Encrypted key file (optional)
+
+If the OS supports Electron **`safeStorage`**, the app can store the key in **`<userData>/.apikey`** (encrypted). The renderer exposes **`window.api.saveApiKey`** / **`getApiKeyStatus`** via IPC ([`src/main/index.ts`](src/main/index.ts)); there is no settings screen in the UI yet—callers would use the preload API from devtools or a future settings panel. On startup, if **`ANTHROPIC_API_KEY`** is not already set, a valid **`.apikey`** file is decrypted into memory.
+
+If **`ANTHROPIC_API_KEY`** is set in the environment, it takes precedence over the file.
+
+---
+
+## Native modules (better-sqlite3)
+
+**better-sqlite3** is a native addon: it must match **Electron’s** Node ABI for `npm run dev` and your **system Node** ABI if you run `scripts/import-pocket.mjs` with Node directly. After `npm install`, **`postinstall`** runs **`electron-rebuild`**. If CLI import fails with a version mismatch, run **`npm rebuild better-sqlite3`**, then **`npm run rebuild:native`** before **`npm run dev`** again.
 
 ## Development
 
@@ -46,9 +133,10 @@ Other scripts:
 | `npm run build` | Production build + **electron-builder** macOS DMG |
 | `npm run typecheck` | Typecheck main and renderer TypeScript projects |
 | `npm run preview` | Preview production build locally                  |
-| `npm run import-pocket` | Import Pocket JSON (defaults to `~/Desktop/pocket-data-fixed.json`) |
+| `npm run fix-pocket` | Repair malformed Pocket export → writes `*-fixed.json` (see script argv) |
+| `npm run import-pocket` | Import Pocket JSON into SQLite (defaults to `~/Desktop/pocket-data.json`, repairs on load) |
 
-Native modules (**better-sqlite3**) are compiled for Electron; if install fails, follow Electron’s docs for rebuilding native addons (`@electron/rebuild` is a dev dependency). For CLI import under system Node, you may need `npm rebuild better-sqlite3`.
+See [Native modules (better-sqlite3)](#native-modules-better-sqlite3) if install or import fails with an ABI error.
 
 ## Building
 
@@ -62,21 +150,40 @@ The build copies `assets/` into the app as **extra resources** (e.g. `trayIconTe
 
 ## Data storage
 
-- **Database:** `readlater.db` in Electron’s **userData** directory (SQLite with WAL mode).
-- **Schema:** Articles (URL, title, summary, favicon, cover image, status, timestamps) and a separate **tags** table; FTS5 virtual table for search.
-
-Your articles and tags remain local to your Mac user account.
+- **Database file:** `readlater.db` (SQLite with WAL). Exact paths per OS are in [Where the database and API key file live](#where-the-database-and-api-key-file-live).
+- **Schema:** Articles (URL, title, summary, favicon, cover image, status, timestamps), **tags** table, and FTS5 for search. All data stays **local** on your machine.
 
 ### Importing from Pocket
 
-1. Repair a broken Pocket JSON export: `node scripts/fix-pocket-json.mjs /path/to/pocket-data.json /path/to/pocket-data-fixed.json`
-2. Import into the app database (quit ReadLater first): `node scripts/import-pocket.mjs /path/to/pocket-data-fixed.json`
+The importer accepts:
 
-Default database path on macOS: `~/Library/Application Support/readlater/readlater.db`. Override with `READLATER_DB=/path/to/readlater.db`.
+- **`{ "bookmarks": [ { "url", "tags", "title" }, ... ] }`** (normal Pocket JSON export) — parsed as-is, no title mangling.
+- A **top-level array** of the same objects, or legacy broken exports (regex repair + `jsonrepair` fallback).
 
-Imports set `status` to `done` and leave `summary` empty. URLs without `http://` or `https://` get `https://`. Re-running the import skips existing URLs but **merges** any new tags.
+Use **`--clean`** (or `POCKET_IMPORT_CLEAN=1`) to **wipe all articles** (tags cascade) before importing.
 
-**Native module ABI:** After `npm install`, `postinstall` runs `electron-rebuild` so `better-sqlite3` matches **Electron** (needed for `npm run dev`). If you run CLI scripts with **system Node** (e.g. `import-pocket.mjs`) and see an ABI mismatch, run `npm rebuild better-sqlite3`. Before `npm run dev` again, run `npm run rebuild:native` (or `npm install`) so the addon matches Electron again.
+**One-shot import (recommended):**
+
+```bash
+READLATER_DB="$HOME/Library/Application Support/readlater/readlater.db" \
+  node scripts/import-pocket.mjs --clean /path/to/pocket-export.json
+```
+
+Or set **`POCKET_JSON`** instead of passing a path: `POCKET_JSON=/path/to/pocket-data.json node scripts/import-pocket.mjs`.
+
+**Optional:** write repaired, pretty-printed JSON only (no DB writes):
+
+```bash
+npm run fix-pocket -- /path/to/pocket-data.json /path/to/pocket-data-fixed.json
+```
+
+Default input paths: **import** uses `~/Desktop/pocket-data.json` when no argv/`POCKET_JSON`; **fix-pocket** uses `~/Desktop/pocket-data.json` → `pocket-data-fixed.json`.
+
+Default database on macOS: `~/Library/Application Support/readlater/readlater.db`. Override with **`READLATER_DB`**. Quit ReadLater before importing if you want to avoid concurrent writes.
+
+Imports set `status` to `done` and leave `summary` empty. URLs without `http://` or `https://` get `https://`. **`INSERT OR IGNORE`** on articles: existing URLs are skipped for the row, but **tags are merged** (`INSERT OR IGNORE` on `(article_id, tag)`).
+
+The repo includes **`tsx`** for running TypeScript tooling if you add `.ts` scripts later; import remains `scripts/import-pocket.mjs`.
 
 ## Search and tags
 

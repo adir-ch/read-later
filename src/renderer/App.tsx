@@ -61,6 +61,27 @@ export default function App() {
     return filteredArticles
   }, [filteredArticles, activeTagFilters, query])
 
+  /** Most-used tags first (for filter strip); frequency from current article list */
+  const tagsSortedByUsage = React.useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const a of articles) {
+      for (const t of a.tags) {
+        counts.set(t, (counts.get(t) ?? 0) + 1)
+      }
+    }
+    return [...allTags].sort((a, b) => {
+      const d = (counts.get(b) ?? 0) - (counts.get(a) ?? 0)
+      return d !== 0 ? d : a.localeCompare(b)
+    })
+  }, [articles, allTags])
+
+  /** Search/filter results, newest first (grid density follows window size in ArticleList) */
+  const articlesNewestFirst = React.useMemo(() => {
+    return [...displayedArticles].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
+  }, [displayedArticles])
+
   const handleSave = useCallback(async (url: string) => {
     const result = await window.api.saveUrl(url)
     if ('error' in result) throw new Error(result.error)
@@ -136,14 +157,14 @@ export default function App() {
       <SearchBar value={query} onChange={setQuery} />
 
       <TagFilterStrip
-        tags={allTags}
+        tags={tagsSortedByUsage}
         active={activeTagFilters}
         onToggle={handleTagToggle}
       />
 
       <ArticleList
         windowMode={windowMode}
-        articles={displayedArticles}
+        articles={articlesNewestFirst}
         loading={loading}
         onDelete={handleDelete}
         onTagAdd={handleTagAdd}
