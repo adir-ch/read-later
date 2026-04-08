@@ -229,18 +229,35 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({ layout, art
       onMouseLeave={isDesktop ? () => setCardHover(false) : undefined}
     >
       {showCover && article.cover_image ? (
-        <img
-          src={article.cover_image}
-          alt=""
-          onError={() => setCoverError(true)}
+        <button
+          type="button"
+          onClick={() => window.api.openUrl(article.url)}
+          aria-label="Open article in browser"
+          title="Open link"
           style={{
-            width: '100%',
-            height: 'clamp(152px, min(24vh, 26vw), 228px)',
-            minHeight: '152px',
-            objectFit: 'cover',
             display: 'block',
+            width: '100%',
+            padding: 0,
+            margin: 0,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            lineHeight: 0,
           }}
-        />
+        >
+          <img
+            src={article.cover_image}
+            alt=""
+            onError={() => setCoverError(true)}
+            style={{
+              width: '100%',
+              height: 'clamp(152px, min(24vh, 26vw), 228px)',
+              minHeight: '152px',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        </button>
       ) : null}
       {showCover ? (
         <div style={innerPadding}>{body}</div>

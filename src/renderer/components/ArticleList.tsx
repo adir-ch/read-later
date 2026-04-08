@@ -103,7 +103,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
     return () => ro.disconnect()
   }, [layout])
 
-  const skeletonDesktopCount = Math.min(12, Math.max(4, desktopCols * 3))
+  const skeletonDesktopCount = Math.min(9, Math.max(4, desktopCols * 3))
 
   if (loading) {
     if (layout === 'desktop') {
@@ -128,7 +128,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
     }
     return (
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {Array.from({ length: 8 }, (_, i) => (
+        {Array.from({ length: 9 }, (_, i) => (
           <SkeletonRow key={i} />
         ))}
       </div>

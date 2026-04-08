@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import type { Article, WindowMode } from '../shared/types'
+import { sortArticlesNewestFirst } from '../shared/sortArticles'
 import { useArticles } from './hooks/useArticles'
 import { useSearch } from './hooks/useSearch'
 import { Header } from './components/Header'
@@ -10,6 +11,9 @@ import { ArticleList } from './components/ArticleList'
 import { UndoToast } from './components/UndoToast'
 
 type Theme = 'dark' | 'light'
+
+/** Max articles shown in the list (newest first by created_at) */
+const MAX_VISIBLE_ARTICLES = 9
 
 function getInitialTheme(): Theme {
   try {
@@ -75,11 +79,9 @@ export default function App() {
     })
   }, [articles, allTags])
 
-  /** Search/filter results, newest first (grid density follows window size in ArticleList) */
-  const articlesNewestFirst = React.useMemo(() => {
-    return [...displayedArticles].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )
+  /** Search/filter results: added date, newest first; capped at MAX_VISIBLE_ARTICLES */
+  const visibleArticles = React.useMemo(() => {
+    return sortArticlesNewestFirst(displayedArticles).slice(0, MAX_VISIBLE_ARTICLES)
   }, [displayedArticles])
 
   const handleSave = useCallback(async (url: string) => {
@@ -164,7 +166,7 @@ export default function App() {
 
       <ArticleList
         windowMode={windowMode}
-        articles={articlesNewestFirst}
+        articles={visibleArticles}
         loading={loading}
         onDelete={handleDelete}
         onTagAdd={handleTagAdd}

@@ -132,7 +132,7 @@ export function searchFts(query: string): Article[] {
     INNER JOIN articles_fts ON articles_fts.rowid = a.id
     WHERE articles_fts MATCH ?
     GROUP BY a.id
-    ORDER BY rank
+    ORDER BY a.created_at DESC
   `).all(query) as Record<string, unknown>[]
   return rows.map(rowToArticle)
 }
